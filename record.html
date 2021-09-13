@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>record page</title>
+    <style></style>
+  </head>
+  <body>
+    <video id="video" autoplay="true" controls="true" controlsList="nodownload">
+      Your browser doesn't support HTML5 video.
+    </video>
+    <button class="btn" id="record" onclick="record()">Record</button>
+    <button class="btn" id="stop" style="display: none" onclick="stop()">
+      Stop
+    </button>
+    <button class="btn" id="download" disabled="true" onclick="download()">
+      Download
+    </button>
+    <div class="created"></div>
+    <script>
+      const video = document.getElementById("video");
+      const downloadBtn = document.getElementById("download");
+      const recordBtn = document.getElementById("record");
+      const stopBtn = document.getElementById("stop");
+      let recorder;
+
+      // async函数一定会返回一个promise对象
+      async function record() {
+        //   开始录制
+        let captureStream;
+
+        try {
+          captureStream = await navigator.mediaDevices.getDisplayMedia({
+            video: true,
+            audio: true,
+            cursor: "always",
+          });
+        } catch (error) {
+          alert("Could not get stream");
+          return;
+        }
+
+        recordBtn.style = "display:none";
+        stopBtn.style = "display:inline";
+
+        // 删除之前的 污染
+        window.URL.revokeObjectURL(video.src);
+
+        video.autoplay = true;
+
+        // 实时的播放录屏
+        video.srcObject = captureStream;
+
+        // new 一个媒体记录
+        recorder = new MediaRecorder(captureStream);
+        recorder.start();
+
+        captureStream.getVideoTracks()[0].onended = () => {
+          recorder.stop();
+        };
+
+        recorder.addEventListener("dataavailable", (event) => {
+          console.log("dataavailable----------");
+          const videoUrl = URL.createObjectURL(event.data, {
+            type: "video/mp4",
+          });
+
+          video.srcObject = null;
+          video.src = videoUrl;
+          video.autoplay = false;
+        });
+      }
+
+      function download() {
+        const url = video.src;
+        const name = new Date()
+          .toISOString()
+          .slice(0, 19)
+          .replace("T", " ")
+          .replace(" ", "_")
+          .replace(/:/g, "-");
+        const a = document.createElement("a");
+
+        a.style = "display: none";
+        a.download = `${name}.mp4`;
+        a.href = url;
+
+        document.body.appendChild(a);
+
+        a.click();
+      }
+
+      function stop() {
+        let tracks = video.srcObject.getTracks();
+        tracks.forEach((track) => track.stop());
+        recorder.stop();
+      }
+    </script>
+  </body>
+</html>
